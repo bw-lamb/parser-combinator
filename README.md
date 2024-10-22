@@ -1,8 +1,9 @@
 # Haskell Parser Combinator
 
-A very barebones monadic parser combinator library in Haskell.
+A very bare bones monadic parser combinator library in Haskell.
 
 1. [The `Parser` Type](##The`Parser`Type)
+    1. [Parser Parameters](###ParserParameters)
     1. [Modifying Parsers](###ModifyingParsers)
     2. [Choosing Parsers](###ChoosingParsers)
     3. [Repeating Parsers](###RepeatingParsers)
@@ -14,10 +15,10 @@ A very barebones monadic parser combinator library in Haskell.
 
 ## The `Parser` Type
 
-The `Parser` type is a function that takes a string as input, and returns a `ParserResult` type. A
+The `Parser` type is a function that takes a list of *something* as input, and returns a `ParserResult` type. A
 `ParserResult` is either:
 
-- A successul parse: The parsed value, as well as the rest of the input string is returned.
+- A successful parse: The parsed value, as well as the rest of the input string is returned.
 - A failed parse: An error message is returned.
 
 Parsers are ran using the `parse [parser] [input]` function.
@@ -30,6 +31,13 @@ Success (4.0, "+ ")
 ghci> parse expr "/4"
 Failure "Expected numeric char, got /"
 ```
+
+### Parser Parameters
+
+The full type of a `Parser` is `Parser a b = Parser ([a] -> ParserResult b a)`. The parser
+takes a list of `a` as input, and returns a result that is either a `Failure`, containing an error
+message, or a `Success`, which contains the parsed result of type `b`, and the remaining elements of
+the input list.
 
 ### Modifying Parsers
 
@@ -80,14 +88,15 @@ ghci> parse someA "aaabcdefg"
 Success ("aaa","bcdefg")
 ```
 
-The parsers created from using `some` or `any` return a *list* of the return type; `some (char 'a')` has a type of `Parser [char]`.
+The parsers created from using `some` or `any` return a *list* of the return type; `some (char 'a')` has a type of `Parser Char [Char]`.
 
 ### Combining Parsers
 
 The `Parser` type is a monad, meaning complex parsers can be made using `bind`. `do` notation makes this more concise.
 
 ```
-add :: Parser Float
+-- Take a Char list as input, parse a Float
+add :: Parser Char Float
 {- Using bind
 add = number >>= \left ->
       char '+' >>
@@ -141,11 +150,11 @@ Failure "This can never be a Success"
 
 ## Evaluation
 
-With the `Parser` type being generic, a `Parser` can return a multitude of types. As shown in the example included (see below), input can be evaluated at parse time, or can be used to create other typee useful in lexers/compilers.
+With the `Parser` type being generic, a `Parser` can return a multitude of types. As shown in the example included (see below), input can be evaluated at parse time, or can be used to create other type useful in lexers/compilers.
 
 Run-time evaluation:
 ```
-add :: Parser Float
+add :: Parser Char Float
 add =
     do
         left <- number
@@ -158,7 +167,7 @@ Parsing into other data types:
 ```
 type Token a = Val a | Add ... -- This can be expanded
 
-add :: (Num a) => Parser [Token a]
+add :: (Num a) => Parser Char [Token a]
 add =
     do
         left <- number
