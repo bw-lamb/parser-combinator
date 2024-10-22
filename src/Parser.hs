@@ -165,9 +165,9 @@ char c =
 whitespace :: Parser Char Char
 whitespace = char ' ' <|> char '\t' <|> char '\n' <|> char '\r'
 
--- Parse a specific seqing
-seqing :: String -> Parser Char String
-seqing = mapM char
+-- Parse a specific string
+string :: String -> Parser Char String
+string = mapM char
 
 -- Parse a natural number
 natural :: Parser Char Int
