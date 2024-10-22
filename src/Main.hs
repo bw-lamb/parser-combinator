@@ -14,7 +14,7 @@ import Parser
 --            | variable
 --            | number
 
-expr :: Parser Float
+expr :: Parser Char Float
 expr =
     do
         l <- token $ term
@@ -28,7 +28,7 @@ expr =
             return (l - r)
         <|> term
 
-term :: Parser Float
+term :: Parser Char Float
 term =
     do
         l <- token $ factor
@@ -42,7 +42,7 @@ term =
             return (l / r)
         <|> factor
 
-factor :: Parser Float
+factor :: Parser Char Float
 factor =
     do
         token $ char '('
@@ -51,7 +51,7 @@ factor =
         return e
         <|> number
 
-number :: Parser Float
+number :: Parser Char Float
 number = do decimal <|> fromIntegral <$> int
 
 main :: IO ()

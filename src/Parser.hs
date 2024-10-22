@@ -12,7 +12,7 @@ module Parser (
     alphanum,
     char,
     whitespace,
-    string,
+    seqing,
     natural,
     int,
     decimal,
@@ -23,50 +23,53 @@ import Control.Applicative (Alternative, empty, (<|>))
 import Text.Printf (printf)
 import Prelude hiding (any, some)
 
-data ParserResult a = Success (a, String) | Failure String
+data ParserResult b a = Success (b, [a]) | Failure String
     deriving (Show)
 
-newtype Parser a = Parser (String -> ParserResult a)
+-- The Parser type
+-- a: The type that we are parsing from. This will be a list of a
+-- b: The type we are trying to parse
+newtype Parser a b = Parser ([a] -> ParserResult b a)
 
-parse :: Parser a -> String -> ParserResult a
+parse :: Parser a b -> [a] -> ParserResult b a
 parse (Parser p) = p
 
-any :: Parser a -> Parser [a]
+any :: Parser a b -> Parser a [b]
 any p =
     Parser
-        ( \str -> case parse p str of
+        ( \seq -> case parse p seq of
             Success (res, rem) -> case parse (any p) rem of
                 Success (res2, rem2) -> Success (res : res2, rem2)
                 Failure _ -> Success ([res], rem)
-            Failure _ -> Success ([], str)
+            Failure _ -> Success ([], seq)
         )
 
-some :: Parser a -> Parser [a]
+some :: Parser a b -> Parser a [b]
 some p =
     Parser
-        ( \str -> case parse p str of
+        ( \seq -> case parse p seq of
             Success (res, rem) -> case parse (any p) rem of
                 Success (res2, rem2) -> Success (res : res2, rem2)
                 Failure _ -> Success ([res], rem)
             Failure e -> Failure e
         )
 
-instance Functor Parser where
+instance Functor (Parser a) where
     fmap f p =
         Parser
-            ( \str -> case parse p str of
+            ( \seq -> case parse p seq of
                 Success (res, rem) -> Success (f res, rem)
                 Failure e -> Failure e
             )
 
-instance Applicative Parser where
+instance Applicative (Parser a) where
     -- pure :: a -> Parser a
-    pure a = Parser (\str -> Success (a, str))
+    pure a = Parser (\seq -> Success (a, seq))
 
     -- (<*>) :: f (a -> b) -> f a -> f b
     (<*>) pf pa =
         Parser
-            ( \str -> case parse pf str of
+            ( \seq -> case parse pf seq of
                 Success (f, rem) -> case parse pa rem of
                     Success (res, rem2) -> Success (f res, rem2)
                     Failure e -> Failure e
@@ -81,9 +84,9 @@ instance Applicative Parser where
     -- (*>) :: Parser a -> Parser b -> Parser a
     (<*) left right = left >>= \res -> right >> return res
 
-instance Alternative Parser where
+instance Alternative (Parser a) where
     -- empty :: Parser a
-    empty = Parser (\str -> Failure "Empty")
+    empty = Parser (\seq -> Failure "Empty")
 
     -- (<|>) :: f a -> f a -> f a
     (<|>) left right =
@@ -93,37 +96,37 @@ instance Alternative Parser where
                 Failure _ -> parse right inp
             )
 
-instance Monad Parser where
+instance Monad (Parser a) where
     -- return :: a -> Parser a
     return = pure
 
     -- (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     (>>=) left f =
         Parser
-            ( \str -> case parse left str of
+            ( \seq -> case parse left seq of
                 Success (res, rem) -> parse (f res) rem
                 Failure e -> Failure e
             )
 
 -- Fail always with msg.
-failure :: String -> Parser a
+failure :: String -> Parser a b
 failure msg = Parser (\_ -> Failure msg)
 
--- Parses the next character in the stream indiscriminantly
-item :: Parser Char
+-- Parses the next character in the seqeam indiscriminantly
+item :: Parser Char Char
 item =
     Parser
-        ( \str -> case str of
-            [] -> parse empty str
+        ( \seq -> case seq of
+            [] -> parse empty seq
             (h : t) -> Success (h, t)
         )
 
 -- Parses an alphabetic character
-alpha :: Parser Char
+alpha :: Parser Char Char
 alpha =
     Parser
-        ( \str -> case str of
-            [] -> parse empty str
+        ( \seq -> case seq of
+            [] -> parse empty seq
             (h : t) ->
                 if h `elem` ['a' .. 'z'] ++ ['A' .. 'Z']
                     then Success (h, t)
@@ -131,11 +134,11 @@ alpha =
         )
 
 -- Parses an numeric character
-num :: Parser Char
+num :: Parser Char Char
 num =
     Parser
-        ( \str -> case str of
-            [] -> parse empty str
+        ( \seq -> case seq of
+            [] -> parse empty seq
             (h : t) ->
                 if h `elem` ['0' .. '9']
                     then Success (h, t)
@@ -143,15 +146,15 @@ num =
         )
 
 -- Parses an alphanumeric character
-alphanum :: Parser Char
+alphanum :: Parser Char Char
 alphanum = alpha <|> num
 
 -- Parse a specific character
-char :: Char -> Parser Char
+char :: Char -> Parser Char Char
 char c =
     Parser
-        ( \str -> case str of
-            [] -> parse empty str
+        ( \seq -> case seq of
+            [] -> parse empty seq
             (h : t) ->
                 if h == c
                     then Success (h, t)
@@ -159,24 +162,24 @@ char c =
         )
 
 -- Parse a whitespace character
-whitespace :: Parser Char
+whitespace :: Parser Char Char
 whitespace = char ' ' <|> char '\t' <|> char '\n' <|> char '\r'
 
--- Parse a specific string
-string :: String -> Parser String
-string = mapM char
+-- Parse a specific seqing
+seqing :: String -> Parser Char String
+seqing = mapM char
 
 -- Parse a natural number
-natural :: Parser Int
+natural :: Parser Char Int
 natural =
     Parser
-        ( \str -> case parse (some num) str of
+        ( \seq -> case parse (some num) seq of
             Success (res, rem) -> Success (read res :: Int, rem)
             Failure e -> Failure e
         )
 
 -- Parse an integer
-int :: Parser Int
+int :: Parser Char Int
 int =
     do
         char '-'
@@ -185,7 +188,7 @@ int =
         <|> natural
 
 -- Parse a decimal number
-decimal :: Parser Float
+decimal :: Parser Char Float
 decimal =
     do
         char '-'
@@ -208,5 +211,5 @@ magnitude v
     | otherwise = 10.0 * magnitude (v / 10.0)
 
 -- Wrap a parser so that it will succeed when surrounded by any or no whitespac
-token :: Parser a -> Parser a
+token :: Parser Char b -> Parser Char b
 token parser = any whitespace *> parser <* any whitespace
