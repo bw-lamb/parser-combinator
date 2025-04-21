@@ -85,11 +85,11 @@ instance Applicative (Parser a) where
                 Failure e -> Failure e
             )
 
-    -- Keep the result of the left parser
+    -- Keep the result of the right parser
     -- (*>) :: Parser a -> Parser b -> Parser b
     (*>) left right = left >> right
 
-    -- Keep the result of the right parser
+    -- Keep the result of the left parser
     -- (*>) :: Parser a -> Parser b -> Parser a
     (<*) left right = left >>= \res -> right >> return res
 
@@ -214,6 +214,6 @@ decimalFraction =
         f <- some num
         return (d:f)
 
--- Wrap a parser so that it will succeed when surrounded by any or no whitespac
+-- Wrap a parser so that it will succeed when surrounded by any or no whitespace
 token :: Parser Char b -> Parser Char b
 token parser = any whitespace *> parser <* any whitespace
