@@ -17,28 +17,28 @@ import Parser
 expr :: Parser Char Float
 expr =
     do
-        l <- token $ term
+        l <- token term
         char '+'
-        r <- token $ expr
+        r <- token expr
         return (l + r)
         <|> do
-            l <- token $ term
+            l <- token term
             char '-'
-            r <- token $ expr
+            r <- token expr
             return (l - r)
         <|> term
 
 term :: Parser Char Float
 term =
     do
-        l <- token $ factor
+        l <- token factor
         char '*'
-        r <- token $ term
+        r <- token term
         return (l * r)
         <|> do
-            l <- token $ factor
+            l <- token factor
             char '/'
-            r <- token $ expr
+            r <- token expr
             return (l / r)
         <|> factor
 
@@ -57,7 +57,10 @@ number = do decimal <|> fromIntegral <$> int
 main :: IO ()
 main = 
     do
+        putStr "> "
         input <- getLine
-        let result = parse expr input
-        print result
+        case parse expr input of
+            Success(res, []) -> do print res; putStrLn "ok."
+            Success(res, _) -> putStrLn "Incomplete expression."
+            Failure e -> putStrLn e
         main
