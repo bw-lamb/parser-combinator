@@ -41,7 +41,7 @@ the input list.
 
 ### Modifying Parsers
 
-If successful, `Parsers` can have functions applied to them using `fmap`:
+If successful, `Parsers` can have functions applied to them using `fmap` (`<$>`):
 
 ```
 ghci> add5 = (+5) <$> number
@@ -64,7 +64,7 @@ Failure "Expected b, got c"
 
 ### Repeating Parsers
 
-Parsers can be repeated in two ways:
+Parsers can be repeated in three ways:
 
 - Using `any`: Matching zero or more successful parses
 ```
@@ -74,8 +74,7 @@ Success ("","bcdefg")
 ghci> parse anyA "abcdefg"
 Success ("a","bcdefg")
 ghci> parse anyA "aaabcdefg"
-Success ("aaa","bcdefg"
-
+Success ("aaa","bcdefg")
 ```
 - Using `some`: Matching one or more successful parses
 ```
@@ -87,8 +86,15 @@ Success ("a","bcdefg")
 ghci> parse someA "aaabcdefg"
 Success ("aaa","bcdefg")
 ```
+- Using `optional`: Matching a parser *at most once*
+```
+ghci> parse (optional $ char 'a') "aabc"
+Success ("a","abc")
+ghci> parse (optional $ char 'a') "bcd"
+Success ("","bcd")
+```
 
-The parsers created from using `some` or `any` return a *list* of the return type; `some (char 'a')` has a type of `Parser Char [Char]`.
+The parsers created from using `some`, `any`, and `optional` return a *list* of the return type; `some (char 'a')` has a type of `Parser Char [Char]`.
 
 ### Combining Parsers
 
