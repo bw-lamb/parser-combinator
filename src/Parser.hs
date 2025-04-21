@@ -5,6 +5,7 @@ module Parser (
     parse,
     any,
     some,
+    optional,
     failure,
     item,
     alpha,
@@ -12,7 +13,7 @@ module Parser (
     alphanum,
     char,
     whitespace,
-    seqing,
+    string,
     natural,
     int,
     decimal,
@@ -52,6 +53,14 @@ some p =
                 Success (res2, rem2) -> Success (res : res2, rem2)
                 Failure _ -> Success ([res], rem)
             Failure e -> Failure e
+        )
+
+optional :: Parser a b -> Parser a [b]
+optional p = 
+    Parser
+        ( \seq -> case parse p seq of
+            Success (res, rem) -> Success ([res], rem)
+            Failure _ -> Success ([], seq)
         )
 
 instance Functor (Parser a) where
@@ -187,28 +196,23 @@ int =
         return (-v)
         <|> natural
 
--- Parse a decimal number
+
 decimal :: Parser Char Float
 decimal =
     do
-        char '-'
-        w <- natural
-        char '.'
-        f <- natural
-        let v = fromIntegral w + (fromIntegral f / magnitude (fromIntegral f))
-        return (-v)
-        <|> do
-            w <- natural
-            char '.'
-            f <- natural
-            let v = fromIntegral w + (fromIntegral f / magnitude (fromIntegral f))
-            return v
+        s <- optional $ char '-'
+        w <- some num
+        fstr <- optional decimalFraction
+        case fstr of
+            [] -> return (read (s++w) :: Float)
+            [t] -> return (read (s++w++t) :: Float)
 
--- Get the magnitude of a number (how much to divide it by to make it completely fractional. e.g. 1234 -> 0.1234)
-magnitude :: Float -> Float
-magnitude v
-    | v < 10.0 = 10.0
-    | otherwise = 10.0 * magnitude (v / 10.0)
+decimalFraction :: Parser Char [Char]
+decimalFraction =
+    do
+        d <- char '.'
+        f <- some num
+        return (d:f)
 
 -- Wrap a parser so that it will succeed when surrounded by any or no whitespac
 token :: Parser Char b -> Parser Char b
